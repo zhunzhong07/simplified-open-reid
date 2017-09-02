@@ -1,0 +1,1 @@
+This repository is simplified from open-reid. The network is resnet50 and the loss is combined with  tripletloss and cross-entropy . 
