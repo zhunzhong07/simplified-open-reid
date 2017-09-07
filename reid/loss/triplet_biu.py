@@ -36,7 +36,7 @@ class TripletLoss_biu(nn.Module):
         cov_p=[]
         for i in range(n):
             dist_ap.append(dist[i][mask[i]].max())
-            dist_an.append(dist[i][1 - mask[i]].min())
+            dist_an.append(dist[i][mask[i] == 0].min())
         dist_ap = torch.cat(dist_ap)
         dist_an = torch.cat(dist_an)
         # Compute ranking hinge loss

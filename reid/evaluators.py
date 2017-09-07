@@ -68,7 +68,7 @@ def pairwise_distance(features, query=None, gallery=None, metric=None):
 def evaluate_all(distmat, query=None, gallery=None,
                  query_ids=None, gallery_ids=None,
                  query_cams=None, gallery_cams=None,
-                 cmc_topk=(1, 5, 10,if_cmc=False)):
+                 cmc_topk=(1, 5, 10),if_cmc=False):
     if query is not None and gallery is not None:
         query_ids = [pid for _, pid, _ in query]
         gallery_ids = [pid for _, pid, _ in gallery]
@@ -101,7 +101,7 @@ def evaluate_all(distmat, query=None, gallery=None,
         print('CMC Scores{:>12}{:>12}{:>12}'
           .format('allshots', 'cuhk03', 'market1501'))
         for k in cmc_topk:
-        print('  top-{:<4}{:12.1%}{:12.1%}{:12.1%}'
+            print('  top-{:<4}{:12.1%}{:12.1%}{:12.1%}'
               .format(k, cmc_scores['allshots'][k - 1],
                       cmc_scores['cuhk03'][k - 1],
                       cmc_scores['market1501'][k - 1]))

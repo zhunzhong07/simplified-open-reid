@@ -10,10 +10,12 @@ from torch import nn
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
 
+import pdb
+
 from reid import datasets
 from reid.models import ResNet
 from reid.dist_metric import DistanceMetric
-from reid.loss import TripletLoss
+from reid.loss import TripletLoss_biu
 from reid.trainers import Trainer
 from reid.evaluators import Evaluator
 from reid.utils.data import transforms as T
@@ -94,19 +96,19 @@ def main(args):
     # Create model
     # Hacking here to let the classifier be the last feature embedding layer
     # Net structure: avgpool -> FC(1024) -> FC(args.features)
-    model = ResNet(args.depth, num_features=1024,
-                          dropout=args.dropout, num_classes=args.features)
-
+    model = ResNet(args.depth, num_features=args.features,
+                          dropout=args.dropout, num_classes=num_classes)
+    model = nn.DataParallel(model).cuda()
     # Load from checkpoint
     start_epoch = best_map = 0
     if args.if_resume:
-    	print(args.resume)
+        print(args.resume)
         checkpoint = load_checkpoint(args.resume)
         model.load_state_dict(checkpoint['state_dict'])
-        prior_best_map = checkpoint['best_map']
+        prior_best_map = checkpoint['best_top1']
         print("=> Start epoch {}  best top1 {:.1%}"
               .format(start_epoch, prior_best_map))
-    model = nn.DataParallel(model).cuda()
+    # model = nn.DataParallel(model).cuda()
 
     # Distance metric
     metric = DistanceMetric(algorithm=args.dist_metric)
@@ -122,7 +124,10 @@ def main(args):
         return
 
     # Criterion
-    criterion = TripletLoss_biu(margin = args.triplet_margin, num_instances=args.num_instances, 
+    alpha= args.alpha
+    beta = args.beta
+    gamma = args.gamma
+    criterion = TripletLoss_biu(margin = args.margin, num_instances=args.num_instances, 
                                     alpha = alpha, beta =beta , gamma =gamma).cuda()
 
     # Optimizer
@@ -135,7 +140,7 @@ def main(args):
     # Schedule learning rate
     def adjust_lr(epoch):
         lr = args.lr if epoch <= 100 else \
-            args.lr * (0.1 ** ((epoch - 100) / 70.0))
+            args.lr * (0.1 ** ((epoch - 100) / 60.0))
         for g in optimizer.param_groups:
             g['lr'] = lr * g.get('lr_mult', 1)
 
@@ -205,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight-decay', type=float, default=5e-4)
     # training configs
     parser.add_argument('--if_resume', type=bool, default=True)
-    parser.add_argument('--resume', type=str, default='/home/mit/biu/open-reid-alpha/trip_76.37%.tar', metavar='PATH')
+    parser.add_argument('--resume', type=str, default='/home/mit/biu/simplified_open_reid/xentropy3.tar', metavar='PATH')
     parser.add_argument('--evaluate', action='store_true',
                         help="evaluation only")
     parser.add_argument('--epochs', type=int, default=300)
@@ -215,7 +220,7 @@ if __name__ == '__main__':
     parser.add_argument('--dist-metric', type=str, default='euclidean',
                         choices=['euclidean', 'kissme'])
     # misc
-    working_dir = '/home/mit/biu/simplified-open-reid'
+    working_dir = '/home/mit/biu/simplified_open_reid'
     dataset_dir = '/home/mit/biu/dataset'#TitanX-602
     #dataset_dir = '/mount/jmy/dataset'
     parser.add_argument('--data-dir', type=str, metavar='PATH',
