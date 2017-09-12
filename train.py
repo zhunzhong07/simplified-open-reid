@@ -56,7 +56,7 @@ def get_data(name, split_id, data_dir, height, width, batch_size, num_instances,
                      transform=train_transformer),
         batch_size=batch_size, num_workers=workers,
         sampler=RandomIdentitySampler(train_set, num_instances),
-        pin_memory=True, drop_last=True)
+        pin_memory=True)
 
     val_loader = DataLoader(
         Preprocessor(dataset.val, root=dataset.images_dir,
@@ -131,7 +131,19 @@ def main(args):
                                     alpha = alpha, beta =beta , gamma =gamma).cuda()
 
     # Optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
+    if args.optimizer == 'sgd':
+            # base_param_ids = set(map(id, model.module.base.parameters()))
+            # new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+            # param_groups = [
+            #     {'params': model.module.base.parameters(), 'lr_mult': 0.1},
+            #     {'params': new_params, 'lr_mult': 1.0}]
+        param_groups = model.parameters()
+        optimizer = torch.optim.SGD(param_groups, lr=args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay,
+                                    nesterov=True)
+    else :
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
                                  weight_decay=args.weight_decay)
 
     # Trainer
@@ -139,8 +151,11 @@ def main(args):
 
     # Schedule learning rate
     def adjust_lr(epoch):
-        lr = args.lr if epoch <= 100 else \
-            args.lr * (0.1 ** ((epoch - 100) / 60.0))
+        if args.optimizer == 'sgd':
+            lr = args.lr * (0.1 ** (epoch // 40))
+        else :
+            lr = args.lr if epoch <= 80 else \
+                 args.lr * (0.1 ** ((epoch - 100) / 60.0))
         for g in optimizer.param_groups:
             g['lr'] = lr * g.get('lr_mult', 1)
 
@@ -203,10 +218,13 @@ if __name__ == '__main__':
                         help="margin of the triplet loss, default: 0.5")
     parser.add_argument('--alpha', type=float, default= 1.0)
     parser.add_argument('--beta', type=float, default= 0.0)
-    parser.add_argument('--gamma', type=float, default= 0.5)
+    parser.add_argument('--gamma', type=float, default= 0.0)
     # optimizer
-    parser.add_argument('--lr', type=float, default=0.0004,
+    parser.add_argument('--optimizer', type=str, default='sgd',
+                        choices=['sgd', 'adam'])
+    parser.add_argument('--lr', type=float, default=0.0006,
                         help="learning rate of all parameters")
+    parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight-decay', type=float, default=5e-4)
     # training configs
     parser.add_argument('--if_resume', type=bool, default=True)

@@ -80,7 +80,8 @@ class ResNet(nn.Module):
         if self.norm:
             x = F.normalize(x)
         elif self.has_embedding:
-            x = F.relu(x)
+            #x = F.relu(x)
+            pass
         if self.dropout > 0:
             x = self.drop(x)
         if self.num_classes > 0:
